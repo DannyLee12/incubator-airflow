@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 #
 
 """
@@ -28,12 +33,62 @@ from airflow.utils.decorators import apply_defaults
 class SqoopOperator(BaseOperator):
     """
     Execute a Sqoop job.
-    Documentation for Apache Sqoop can be found here: https://sqoop.apache.org/docs/1.4.2/SqoopUserGuide.html.
+    Documentation for Apache Sqoop can be found here:
+    https://sqoop.apache.org/docs/1.4.2/SqoopUserGuide.html
+
+    :param conn_id: str
+    :param cmd_type: str specify command to execute "export" or "import"
+    :param table: Table to read
+    :param query: Import result of arbitrary SQL query. Instead of using the table,
+        columns and where arguments, you can specify a SQL statement with the query
+        argument. Must also specify a destination directory with target_dir.
+    :param target_dir: HDFS destination directory where the data
+        from the rdbms will be written
+    :param append: Append data to an existing dataset in HDFS
+    :param file_type: "avro", "sequence", "text" Imports data to
+        into the specified format. Defaults to text.
+    :param columns: <col,col,col> Columns to import from table
+    :param num_mappers: Use n mapper tasks to import/export in parallel
+    :param split_by: Column of the table used to split work units
+    :param where: WHERE clause to use during import
+    :param export_dir: HDFS Hive database directory to export to the rdbms
+    :param input_null_string: The string to be interpreted as null
+        for string columns
+    :param input_null_non_string: The string to be interpreted as null
+        for non-string columns
+    :param staging_table: The table in which data will be staged before
+        being inserted into the destination table
+    :param clear_staging_table: Indicate that any data present in the
+        staging table can be deleted
+    :param enclosed_by: Sets a required field enclosing character
+    :param escaped_by: Sets the escape character
+    :param input_fields_terminated_by: Sets the input field separator
+    :param input_lines_terminated_by: Sets the input end-of-line character
+    :param input_optionally_enclosed_by: Sets a field enclosing character
+    :param batch: Use batch mode for underlying statement execution
+    :param direct: Use direct export fast path
+    :param driver: Manually specify JDBC driver class to use
+    :param verbose: Switch to more verbose logging for debug purposes
+    :param relaxed_isolation: use read uncommitted isolation level
+    :param hcatalog_database: Specifies the database name for the HCatalog table
+    :param hcatalog_table: The argument value for this option is the HCatalog table
+    :param create_hcatalog_table: Have sqoop create the hcatalog table passed
+        in or not
+    :param properties: additional JVM properties passed to sqoop
+    :param extra_import_options: Extra import options to pass as dict.
+        If a key doesn't have a value, just pass an empty string to it.
+        Don't include prefix of -- for sqoop options.
+    :param extra_export_options: Extra export options to pass as dict.
+        If a key doesn't have a value, just pass an empty string to it.
+        Don't include prefix of -- for sqoop options.
     """
-    template_fields = ('conn_id', 'cmd_type', 'table', 'query', 'target_dir', 'file_type', 'columns', 'split_by',
-                       'where', 'export_dir', 'input_null_string', 'input_null_non_string', 'staging_table',
-                       'enclosed_by', 'escaped_by', 'input_fields_terminated_by', 'input_lines_terminated_by',
-                       'input_optionally_enclosed_by', 'properties', 'extra_import_options', 'driver',
+    template_fields = ('conn_id', 'cmd_type', 'table', 'query', 'target_dir',
+                       'file_type', 'columns', 'split_by',
+                       'where', 'export_dir', 'input_null_string',
+                       'input_null_non_string', 'staging_table',
+                       'enclosed_by', 'escaped_by', 'input_fields_terminated_by',
+                       'input_lines_terminated_by', 'input_optionally_enclosed_by',
+                       'properties', 'extra_import_options', 'driver',
                        'extra_export_options', 'hcatalog_database', 'hcatalog_table',)
     ui_color = '#7D8CA4'
 
@@ -73,53 +128,7 @@ class SqoopOperator(BaseOperator):
                  extra_export_options=None,
                  *args,
                  **kwargs):
-        """
-        :param conn_id: str
-        :param cmd_type: str specify command to execute "export" or "import"
-        :param table: Table to read
-        :param query: Import result of arbitrary SQL query. Instead of using the table,
-            columns and where arguments, you can specify a SQL statement with the query
-            argument. Must also specify a destination directory with target_dir.
-        :param target_dir: HDFS destination directory where the data
-            from the rdbms will be written
-        :param append: Append data to an existing dataset in HDFS
-        :param file_type: "avro", "sequence", "text" Imports data to
-            into the specified format. Defaults to text.
-        :param columns: <col,col,col> Columns to import from table
-        :param num_mappers: Use n mapper tasks to import/export in parallel
-        :param split_by: Column of the table used to split work units
-        :param where: WHERE clause to use during import
-        :param export_dir: HDFS Hive database directory to export to the rdbms
-        :param input_null_string: The string to be interpreted as null
-            for string columns
-        :param input_null_non_string: The string to be interpreted as null
-            for non-string columns
-        :param staging_table: The table in which data will be staged before
-            being inserted into the destination table
-        :param clear_staging_table: Indicate that any data present in the
-            staging table can be deleted
-        :param enclosed_by: Sets a required field enclosing character
-        :param escaped_by: Sets the escape character
-        :param input_fields_terminated_by: Sets the input field separator
-        :param input_lines_terminated_by: Sets the input end-of-line character
-        :param input_optionally_enclosed_by: Sets a field enclosing character
-        :param batch: Use batch mode for underlying statement execution
-        :param direct: Use direct export fast path
-        :param driver: Manually specify JDBC driver class to use
-        :param verbose: Switch to more verbose logging for debug purposes
-        :param relaxed_isolation: use read uncommitted isolation level
-        :param hcatalog_database: Specifies the database name for the HCatalog table
-        :param hcatalog_table: The argument value for this option is the HCatalog table
-        :param create_hcatalog_table: Have sqoop create the hcatalog table passed in or not
-        :param properties: additional JVM properties passed to sqoop
-        :param extra_import_options: Extra import options to pass as dict.
-            If a key doesn't have a value, just pass an empty string to it.
-            Don't include prefix of -- for sqoop options.
-        :param extra_export_options: Extra export options to pass as dict.
-            If a key doesn't have a value, just pass an empty string to it.
-            Don't include prefix of -- for sqoop options.
-        """
-        super(SqoopOperator, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.conn_id = conn_id
         self.cmd_type = cmd_type
         self.table = table
@@ -184,7 +193,8 @@ class SqoopOperator(BaseOperator):
                 extra_export_options=self.extra_export_options)
         elif self.cmd_type == 'import':
             # add create hcatalog table to extra import options if option passed
-            # if new params are added to constructor can pass them in here so don't modify sqoop_hook for each param
+            # if new params are added to constructor can pass them in here
+            # so don't modify sqoop_hook for each param
             if self.create_hcatalog_table:
                 self.extra_import_options['create-hcatalog-table'] = ''
 

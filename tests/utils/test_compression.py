@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 
 import bz2
 import errno
@@ -24,14 +29,14 @@ import unittest
 from airflow.utils import compression
 
 
-class Compression(unittest.TestCase):
+class TestCompression(unittest.TestCase):
 
     def setUp(self):
         self.fn = {}
         try:
-            header = "Sno\tSome,Text \n".encode()
-            line1 = "1\tAirflow Test\n".encode()
-            line2 = "2\tCompressionUtil\n".encode()
+            header = b"Sno\tSome,Text \n"
+            line1 = b"1\tAirflow Test\n"
+            line2 = b"2\tCompressionUtil\n"
             self.tmp_dir = tempfile.mkdtemp(prefix='test_utils_compression_')
             # create sample txt, gz and bz2 files
             with tempfile.NamedTemporaryFile(mode='wb+',
@@ -76,13 +81,13 @@ class Compression(unittest.TestCase):
 
     def test_uncompress_file(self):
         # Testing txt file type
-        self.assertRaisesRegexp(NotImplementedError,
-                                "^Received .txt format. Only gz and bz2.*",
-                                compression.uncompress_file,
-                                **{'input_file_name': None,
-                                   'file_extension': '.txt',
-                                   'dest_dir': None
-                                   })
+        self.assertRaisesRegex(NotImplementedError,
+                               "^Received .txt format. Only gz and bz2.*",
+                               compression.uncompress_file,
+                               **{'input_file_name': None,
+                                  'file_extension': '.txt',
+                                  'dest_dir': None
+                                  })
         # Testing gz file type
         fn_txt = self._get_fn('.txt')
         fn_gz = self._get_fn('.gz')

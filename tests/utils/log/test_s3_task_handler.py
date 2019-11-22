@@ -1,28 +1,32 @@
 # -*- coding: utf-8 -*-
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 
-import mock
-import unittest
 import os
+import unittest
+from unittest import mock
 
-from airflow import configuration
+from airflow.models import DAG, TaskInstance
+from airflow.operators.dummy_operator import DummyOperator
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.utils.log.s3_task_handler import S3TaskHandler
 from airflow.utils.state import State
 from airflow.utils.timezone import datetime
-from airflow.hooks.S3_hook import S3Hook
-from airflow.models import TaskInstance, DAG
-from airflow.operators.dummy_operator import DummyOperator
 
 try:
     import boto3
@@ -38,7 +42,7 @@ except ImportError:
 class TestS3TaskHandler(unittest.TestCase):
 
     def setUp(self):
-        super(TestS3TaskHandler, self).setUp()
+        super().setUp()
         self.remote_log_base = 's3://bucket/remote/log/location'
         self.remote_log_location = 's3://bucket/remote/log/location/1.log'
         self.remote_log_key = 'remote/log/location/1.log'
@@ -50,7 +54,6 @@ class TestS3TaskHandler(unittest.TestCase):
             self.filename_template
         )
 
-        configuration.load_test_config()
         date = datetime(2016, 1, 1)
         self.dag = DAG('dag_for_testing_file_task_handler', start_date=date)
         task = DummyOperator(task_id='task_for_testing_file_log_handler', dag=self.dag)
@@ -78,14 +81,14 @@ class TestS3TaskHandler(unittest.TestCase):
     def test_hook_raises(self):
         handler = self.s3_task_handler
         with mock.patch.object(handler.log, 'error') as mock_error:
-            with mock.patch("airflow.hooks.S3_hook.S3Hook") as mock_hook:
+            with mock.patch("airflow.providers.amazon.aws.hooks.s3.S3Hook") as mock_hook:
                 mock_hook.side_effect = Exception('Failed to connect')
                 # Initialize the hook
                 handler.hook
 
             mock_error.assert_called_once_with(
                 'Could not create an S3Hook with connection id "%s". Please make '
-                'sure that airflow[s3] is installed and the S3 connection exists.',
+                'sure that airflow[aws] is installed and the S3 connection exists.',
                 ''
             )
 
@@ -100,7 +103,7 @@ class TestS3TaskHandler(unittest.TestCase):
         self.assertFalse(self.s3_task_handler.s3_log_exists('s3://nonexistentbucket/foo'))
 
     def test_log_exists_no_hook(self):
-        with mock.patch("airflow.hooks.S3_hook.S3Hook") as mock_hook:
+        with mock.patch("airflow.providers.amazon.aws.hooks.s3.S3Hook") as mock_hook:
             mock_hook.side_effect = Exception('Failed to connect')
             self.assertFalse(self.s3_task_handler.s3_log_exists(self.remote_log_location))
 
@@ -108,9 +111,17 @@ class TestS3TaskHandler(unittest.TestCase):
         self.conn.put_object(Bucket='bucket', Key=self.remote_log_key, Body=b'Log line\n')
         self.assertEqual(
             self.s3_task_handler.read(self.ti),
-            ['*** Reading remote log from s3://bucket/remote/log/location/1.log.\n'
-             'Log line\n\n']
+            (['*** Reading remote log from s3://bucket/remote/log/location/1.log.\n'
+             'Log line\n\n'], [{'end_of_log': True}])
         )
+
+    def test_read_when_s3_log_missing(self):
+        log, metadata = self.s3_task_handler.read(self.ti)
+
+        self.assertEqual(1, len(log))
+        self.assertEqual(len(log), len(metadata))
+        self.assertIn('*** Log file does not exist:', log[0])
+        self.assertEqual({'end_of_log': True}, metadata[0])
 
     def test_read_raises_return_error(self):
         handler = self.s3_task_handler
@@ -155,7 +166,7 @@ class TestS3TaskHandler(unittest.TestCase):
         boto3.resource('s3').Object('bucket', self.remote_log_key).get()
 
     def test_close_no_upload(self):
-        self.ti.is_raw = True
+        self.ti.raw = True
         self.s3_task_handler.set_context(self.ti)
         self.assertFalse(self.s3_task_handler.upload_on_close)
         self.s3_task_handler.close()

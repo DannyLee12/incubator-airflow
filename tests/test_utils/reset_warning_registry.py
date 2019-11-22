@@ -1,19 +1,25 @@
 # -*- coding: utf-8 -*-
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 
 import re
 import sys
+from typing import Dict, Match, Optional
 
 
 # We need to explicitly clear the warning registry context
@@ -26,7 +32,7 @@ import sys
 # Proposed fix from Stack overflow, which refers to the Python bug-page
 # noqa
 # https://stackoverflow.com/questions/19428761/python-showing-once-warnings-again-resetting-all-warning-registries
-class reset_warning_registry(object):
+class reset_warning_registry:
     """
     context manager which archives & clears warning registry for duration of
     context.
@@ -37,10 +43,10 @@ class reset_warning_registry(object):
     """
 
     #: regexp for filtering which modules are reset
-    _pattern = None
+    _pattern = None  # type: Optional[Match[str]]
 
     #: dict mapping module name -> old registry contents
-    _backup = None
+    _backup = None  # type: Optional[Dict]
 
     def __init__(self, pattern=None):
         self._pattern = re.compile(pattern or ".*")

@@ -1,24 +1,28 @@
 # -*- coding: utf-8 -*-
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 
 import logging
 import os
-
-from jinja2 import Template
-
-from airflow import configuration as conf
 from datetime import datetime
+
+from airflow import settings
+from airflow.utils.helpers import parse_template_string
 
 
 class FileProcessorHandler(logging.Handler):
@@ -26,32 +30,36 @@ class FileProcessorHandler(logging.Handler):
     FileProcessorHandler is a python log handler that handles
     dag processor logs. It creates and delegates log handling
     to `logging.FileHandler` after receiving dag processor context.
+
+    :param base_log_folder: Base log folder to place logs.
+    :param filename_template: template filename string
     """
 
     def __init__(self, base_log_folder, filename_template):
-        """
-        :param base_log_folder: Base log folder to place logs.
-        :param filename_template: template filename string
-        """
-        super(FileProcessorHandler, self).__init__()
+        super().__init__()
         self.handler = None
         self.base_log_folder = base_log_folder
-        self.dag_dir = os.path.expanduser(conf.get('core', 'DAGS_FOLDER'))
-        self.filename_template = filename_template
-        self.filename_jinja_template = None
-
-        if "{{" in self.filename_template: #jinja mode
-            self.filename_jinja_template = Template(self.filename_template)
+        self.dag_dir = os.path.expanduser(settings.DAGS_FOLDER)
+        self.filename_template, self.filename_jinja_template = \
+            parse_template_string(filename_template)
 
         self._cur_date = datetime.today()
         if not os.path.exists(self._get_log_directory()):
-            os.makedirs(self._get_log_directory())
+            try:
+                os.makedirs(self._get_log_directory())
+            except OSError:
+                # only ignore case where the directory already exist
+                if not os.path.isdir(self._get_log_directory()):
+                    raise
+
+                logging.warning("%s already exists", self._get_log_directory())
 
         self._symlink_latest_log_directory()
 
     def set_context(self, filename):
         """
         Provide filename context to airflow task handler.
+
         :param filename: filename in which the dag is located
         """
         local_loc = self._init_file(filename)
@@ -107,7 +115,7 @@ class FileProcessorHandler(logging.Handler):
                         os.unlink(latest_log_directory_path)
                         os.symlink(log_directory, latest_log_directory_path)
                 elif (os.path.isdir(latest_log_directory_path) or
-                          os.path.isfile(latest_log_directory_path)):
+                      os.path.isfile(latest_log_directory_path)):
                     logging.warning(
                         "%s already exists as a dir/file. Skip creating symlink.",
                         latest_log_directory_path
@@ -121,15 +129,20 @@ class FileProcessorHandler(logging.Handler):
     def _init_file(self, filename):
         """
         Create log file and directory if required.
+
         :param filename: task instance object
-        :return relative log path of the given task instance
+        :return: relative log path of the given task instance
         """
         relative_path = self._render_filename(filename)
         full_path = os.path.join(self._get_log_directory(), relative_path)
         directory = os.path.dirname(full_path)
 
         if not os.path.exists(directory):
-            os.makedirs(directory)
+            try:
+                os.makedirs(directory)
+            except OSError:
+                if not os.path.isdir(directory):
+                    raise
 
         if not os.path.exists(full_path):
             open(full_path, "a").close()
